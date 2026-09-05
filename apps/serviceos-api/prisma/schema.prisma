@@ -1,0 +1,232 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  status    String   @default("active")
+  metadata  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenants Tenant[]
+
+  @@index([status])
+}
+
+model Tenant {
+  id               String   @id @default(cuid())
+  organizationId   String?
+  slug             String   @unique
+  name             String
+  businessType     String   @default("service")
+  status           String   @default("active")
+  lifeosBusinessId String?
+  logoUrl          String?
+  primaryColor     String   @default("#14B8A6")
+  settings         Json
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  studio       StudioConfig?
+  modules      TenantModule[]
+  providers    Provider[]
+  offerings    ServiceOffering[]
+  jobs         ServiceJob[]
+  auditLogs    AuditLog[]
+
+  @@index([organizationId])
+  @@index([status])
+}
+
+model TenantModule {
+  id        String   @id @default(cuid())
+  tenantId  String
+  moduleId  String
+  enabled   Boolean  @default(true)
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, moduleId])
+}
+
+/// Studio tariffs: base service price, travel per-km fee, category multipliers, HQ pin.
+model StudioConfig {
+  id                    String   @id @default(cuid())
+  tenantId              String   @unique
+  studioName            String
+  subdomain             String   @unique
+  defaultCurrency       String   @default("NGN")
+  basePriceMinor        Int
+  perKmFeeMinor         Int
+  platformCommissionBps       Int      @default(1500)
+  offerTimeoutSeconds         Int      @default(30)
+  cancellationWindowMinutes   Int      @default(60)
+  requireSkillCertifications  Boolean  @default(true)
+  requireProofOfServicePhoto  Boolean  @default(true)
+  preset                      String   @default("beauty")
+  categoryMultipliers         Json
+  travelSpeedsKmh             Json
+  hqAddressLine1        String
+  hqCity                String
+  hqCountry             String
+  hqLat                 Float
+  hqLng                 Float
+  platformPayeeId       String   @default("lifeos-master-ledger")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model Provider {
+  id           String    @id @default(cuid())
+  tenantId     String
+  code         String
+  displayName  String
+  phone        String
+  trustId      String?
+  walletUserId String
+  skill        String
+  status       String    @default("OFFLINE")
+  lat          Float
+  lng          Float
+  lastPingAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobs   ServiceJob[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+}
+
+model ServiceOffering {
+  id               String   @id @default(cuid())
+  tenantId         String
+  sku              String
+  name             String
+  category         String
+  durationMinutes  Int
+  priceMinor       Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobs   ServiceJob[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId, category])
+}
+
+model ServiceJob {
+  id                      String    @id @default(cuid())
+  tenantId                String
+  sourceDomain            String
+  sourceTenantId          String?
+  orderId                 String
+  offeringId              String?
+  category                String
+  durationMinutes         Int       @default(60)
+  escrowId                String?
+  status                  String    @default("UNASSIGNED")
+  priority                String    @default("standard")
+  currency                String    @default("NGN")
+  serviceFeeMinor         Int
+  baseFeeMinor            Int      @default(0)
+  travelFeeMinor          Int      @default(0)
+  providerPayoutMinor     Int
+  platformCommissionMinor Int
+  distanceKm              Float
+  scheduleMode            String   @default("asap")
+  scheduledAt             DateTime?
+  accessNotes             String?
+  gateCode                String?
+  etaMinutes              Int?
+  lastEtaMinutes          Int?
+  otpHash                 String
+  otpCode                 String
+  customerLat             Float
+  customerLng             Float
+  customerAddressLine1    String
+  customerAddressLine2    String?
+  customerCity            String
+  customerRegion          String?
+  customerPostalCode      String?
+  customerCountry         String
+  customerContactName     String?
+  customerContactPhone    String?
+  buyerTrustId            String?
+  buyerName               String?
+  buyerPhone              String?
+  buyerEmail              String?
+  providerId              String?
+  offeredProviderId       String?
+  offerExpiresAt          DateTime?
+  trackingUrl             String
+  transportationJobId     String?
+  posImageUrl             String?
+  posDriveKey             String?
+  assignedAt              DateTime?
+  acceptedAt              DateTime?
+  arrivedAt               DateTime?
+  startedAt               DateTime?
+  completedAt             DateTime?
+  settledAt               DateTime?
+  settlementReleaseId     String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  provider  Provider?         @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  offering  ServiceOffering?  @relation(fields: [offeringId], references: [id], onDelete: SetNull)
+  events    JobEvent[]
+
+  @@index([tenantId, status])
+  @@index([orderId])
+  @@index([providerId])
+  @@index([sourceDomain, orderId])
+}
+
+model JobEvent {
+  id         String   @id @default(cuid())
+  jobId      String
+  fromStatus String?
+  toStatus   String
+  source     String
+  payload    Json
+  createdAt  DateTime @default(now())
+
+  job ServiceJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String?
+  actorKind  String
+  actorId    String?
+  action     String
+  resource   String
+  resourceId String?
+  metadata   Json
+  createdAt  DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([action])
+}

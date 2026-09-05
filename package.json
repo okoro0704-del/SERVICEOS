@@ -1,0 +1,31 @@
+{
+  "name": "serviceos",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ServiceOS — on-demand at-home professional services for LifeOS",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,provider -c teal,cyan \"npm:dev:api\" \"npm:dev:provider\"",
+    "dev:api": "npm run dev -w @serviceos/api",
+    "dev:provider": "npm run dev -w @serviceos/provider",
+    "build": "npm run build -w @lifeos/shared && npm run build -w @serviceos/shared && npm run build -w @serviceos/api && npm run build -w @serviceos/provider",
+    "setup": "npm install && npm run build -w @lifeos/shared && npm run build -w @serviceos/shared && npm run db:generate && npm run db:push:dev",
+    "db:generate": "npm run db:generate -w @serviceos/api",
+    "db:push": "npm run db:push -w @serviceos/api",
+    "db:push:dev": "npm run db:push:dev -w @serviceos/api",
+    "db:seed": "npm run db:seed -w @serviceos/api",
+    "test": "npm run test -w @serviceos/api",
+    "typecheck": "npm run build -w @lifeos/shared && npm run build -w @serviceos/shared && npm run typecheck -w @serviceos/api && npm run typecheck -w @serviceos/provider"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
