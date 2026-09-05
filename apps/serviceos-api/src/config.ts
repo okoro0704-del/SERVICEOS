@@ -11,7 +11,7 @@ const appEnv = resolveAppEnv();
 
 export const config = {
   env: appEnv,
-  port: Number(process.env.SOS_PORT ?? 8920),
+  port: Number(process.env.PORT ?? process.env.SOS_PORT ?? 8920),
   host: process.env.SOS_HOST ?? "0.0.0.0",
   databaseUrl: process.env.DATABASE_URL ?? (appEnv === "production" ? "" : "file:./dev.db"),
   corsOrigins: (
